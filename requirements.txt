@@ -2,4 +2,3 @@ pandas
 yfinance
 flask
 gunicorn
-集中
