@@ -176,20 +176,23 @@ def analyze():
 @app.route('/api/best-pairs', methods=['POST'])
 def best_pairs():
     data = request.json
-    sector = data.get('sector', 'Financial')
+    sector = data.get('sector', 'All')
     ma_period = int(data.get('ma_period', 20))
     limit = int(data.get('limit', 20))
 
     metadata = load_json(METADATA_FILE)
     symbol_cache = load_json(SYMBOL_CACHE_FILE)
     
-    # Filter tickers by sector
-    sector_tickers = [t for t, m in metadata.items() if m.get('sector') == sector]
-    if not sector_tickers:
-        return jsonify({"error": f"No tickers found for sector {sector}"}), 404
-    
-    # Limit to top 60 tickers in sector to keep it under ~1800 pairs
-    sector_tickers = sector_tickers[:60]
+    if sector == 'All':
+        # Take a representative sample from across the universe
+        # To avoid massive compute, we'll take top 100 tickers based on alphabetic order or just first 100
+        sector_tickers = list(metadata.keys())[:100]
+    else:
+        # Filter tickers by sector
+        sector_tickers = [t for t, m in metadata.items() if m.get('sector') == sector]
+        if not sector_tickers:
+            return jsonify({"error": f"No tickers found for sector {sector}"}), 404
+        sector_tickers = sector_tickers[:60]
     
     all_symbols = [resolve_ticker(t, symbol_cache) for t in sector_tickers]
 

@@ -91,6 +91,17 @@
             font-family: inherit;
             outline: none;
             transition: all 0.3s;
+            -webkit-appearance: none;
+            /* Bypass native styling */
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .input-group select {
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.2rem;
         }
 
         input:focus {
@@ -101,6 +112,7 @@
         option {
             background: #1e293b;
             color: white;
+            padding: 8px;
         }
 
         button {
@@ -322,6 +334,7 @@
                 <div class="input-group">
                     <label>Select Sector to Scan</label>
                     <select id="discoverySector">
+                        <option value="All" selected>All Sectors (Global Scan)</option>
                         <!-- Dynamic Population -->
                     </select>
                 </div>
