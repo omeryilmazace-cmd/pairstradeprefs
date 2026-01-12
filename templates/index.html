@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Lab | Lag Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0b10;
+            --card-bg: #14161f;
+            --accent-primary: #6366f1;
+            --accent-success: #00f2fe;
+            --accent-danger: #ff4d4d;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --border-glass: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 1rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #00f2fe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent-primary);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        button {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-lagger {
+            background: rgba(0, 242, 254, 0.15);
+            color: #00f2fe;
+            border: 1px solid rgba(0, 242, 254, 0.3);
+        }
+
+        .badge-leader {
+            background: rgba(255, 77, 77, 0.15);
+            color: #ff4d4d;
+            border: 1px solid rgba(255, 77, 77, 0.3);
+        }
+
+        .badge-neutral {
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        .ticker-name {
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-glass);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .analysis-info {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-glass);
+            border-radius: 32px;
+            width: 90%;
+            max-width: 1000px;
+            padding: 2.5rem;
+            position: relative;
+        }
+
+        .btn-close {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="loading-overlay" id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="modal-overlay" id="chartModal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="btn-close" onclick="closeModal()">×</button>
+            <h2 id="modalTitle" style="margin-bottom: 0.5rem; color: var(--accent-primary);">Side-by-Side Comparison
+            </h2>
+            <p id="modalSub" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Normalized SMA
+                Comparison (Base 100)</p>
+
+            <div style="height: 450px; width: 100%;">
+                <canvas id="compChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">CORRELATION LAB // LAGGER ANALYTICS</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">2-Year SMA Analysis</div>
+        </header>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+            <button id="tabManual" onclick="switchMode('manual')"
+                style="flex:1; background: var(--accent-primary);">MANUAL ANALYSIS</button>
+            <button id="tabDiscovery" onclick="switchMode('discovery')"
+                style="flex:1; background: rgba(255,255,255,0.05); color: var(--text-muted);">BEST PAIRS
+                DISCOVERY</button>
+        </div>
+
+        <div class="glass-card">
+            <!-- Manual Mode Controls -->
+            <div id="manualControls" class="controls-grid">
+                <div class="input-group">
+                    <label>Target Ticker (Main Stock)</label>
+                    <input type="text" id="targetTicker" placeholder="e.g. JPM-L" list="tickerList">
+                    <datalist id="tickerList"></datalist>
+                </div>
+                <div class="input-group">
+                    <label>SMA Period (Smoothing)</label>
+                    <select id="maPeriod">
+                        <option value="10">10 Day (Tight)</option>
+                        <option value="20" selected>20 Day (Balanced)</option>
+                        <option value="50">50 Day (Smooth)</option>
+                        <option value="100">100 Day (Structural)</option>
+                    </select>
+                </div>
+                <div class="input-group" style="display: flex; align-items: flex-end;">
+                    <button id="btnAnalyze" onclick="startAnalysis()" style="width: 100%;">RUN ANALYTICS</button>
+                </div>
+            </div>
+
+            <!-- Discovery Mode Controls -->
+            <div id="discoveryControls" class="controls-grid" style="display: none;">
+                <div class="input-group">
+                    <label>Select Sector to Scan</label>
+                    <select id="discoverySector">
+                        <!-- Dynamic Population -->
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>SMA Period</label>
+                    <select id="discoMaPeriod">
+                        <option value="20" selected>20 Day</option>
+                        <option value="50">50 Day</option>
+                    </select>
+                </div>
+                <div class="input-group" style="display: flex; align-items: flex-end;">
+                    <button id="btnDiscovery" onclick="startDiscovery()"
+                        style="width: 100%; background: var(--accent-success); color: black;">SCAN BEST PAIRS</button>
+                </div>
+            </div>
+
+            <div id="resultsArea" style="display: none;">
+                <div class="analysis-info" id="analysisMeta">
+                    <!-- Dynamic Meta Info -->
+                </div>
+
+                <table id="mainResultsTable">
+                    <thead>
+                        <tr>
+                            <th id="colAsset">Asset</th>
+                            <th>Correlation</th>
+                            <th>Lag / Deviation</th>
+                            <th>Status</th>
+                            <th>Price Information</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <!-- Results Load Here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allTickers = [];
+        let lastData = null;
+        let comparisonChart = null;
+        let currentMode = 'manual';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            const isManual = mode === 'manual';
+
+            document.getElementById('manualControls').style.display = isManual ? 'grid' : 'none';
+            document.getElementById('discoveryControls').style.display = isManual ? 'none' : 'grid';
+            document.getElementById('resultsArea').style.display = 'none';
+
+            document.getElementById('tabManual').style.background = isManual ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)';
+            document.getElementById('tabManual').style.color = isManual ? 'white' : 'var(--text-muted)';
+            document.getElementById('tabDiscovery').style.background = !isManual ? 'var(--accent-success)' : 'rgba(255,255,255,0.05)';
+            document.getElementById('tabDiscovery').style.color = !isManual ? 'black' : 'var(--text-muted)';
+        }
+
+        async function loadTickers() {
+            try {
+                // Load Tickers for Datalist
+                const res = await fetch('/api/tickers');
+                allTickers = await res.json();
+                const dl = document.getElementById('tickerList');
+                allTickers.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.ticker;
+                    opt.innerText = `${t.name} (${t.sector})`;
+                    dl.appendChild(opt);
+                });
+
+                // Load Sectors for Discovery
+                const sRes = await fetch('/api/sectors');
+                const sectors = await sRes.json();
+                const sSelect = document.getElementById('discoverySector');
+                sectors.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.innerText = s;
+                    sSelect.appendChild(opt);
+                });
+
+            } catch (e) {
+                console.error("Failed to load initial data:", e);
+            }
+        }
+
+        async function startAnalysis() {
+            const target = document.getElementById('targetTicker').value.toUpperCase().trim();
+            const ma = document.getElementById('maPeriod').value;
+            if (!target) return alert("Please enter a target ticker");
+
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('btnAnalyze');
+            const resultsArea = document.getElementById('resultsArea');
+
+            loader.style.display = 'flex';
+            btn.disabled = true;
+
+            try {
+                const targetObj = allTickers.find(x => x.ticker === target);
+                let peers = [];
+                if (targetObj) {
+                    peers = allTickers
+                        .filter(x => x.sector === targetObj.sector && x.ticker !== target)
+                        .map(x => x.ticker)
+                        .slice(0, 30);
+                }
+                if (peers.length === 0) peers = allTickers.slice(0, 20).map(x => x.ticker);
+
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target, peers, ma_period: ma })
+                });
+
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                lastData = data;
+                renderResults(data);
+                resultsArea.style.display = 'block';
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        async function startDiscovery() {
+            const sector = document.getElementById('discoverySector').value;
+            const ma = document.getElementById('discoMaPeriod').value;
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('btnDiscovery');
+
+            loader.style.display = 'flex';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/best-pairs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sector, ma_period: ma })
+                });
+
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                // Fetch high-resolution series for the BEST pair to show off chart immediately
+                // But for discovery, we might just fetch data on click to save bandwidth
+                lastData = data;
+                renderDiscoveryResults(data);
+                document.getElementById('resultsArea').style.display = 'block';
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        function renderResults(data) {
+            document.getElementById('colAsset').innerText = "Asset";
+            document.getElementById('analysisMeta').innerHTML = `
+                <div><b style="color:var(--text-muted)">TARGET:</b> ${data.target}</div>
+                <div><b style="color:var(--text-muted)">SMA:</b> ${data.ma} Day</div>
+                <div style="flex:1; text-align:right; font-size: 0.8rem; opacity: 0.6;">Click row to compare lag</div>
+            `;
+
+            const tbody = document.getElementById('resultsTableBody');
+            tbody.innerHTML = data.results.map(r => {
+                let statusBadge = getStatusBadge(r);
+                const devColor = r.deviation < 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+                return `
+                    <tr onclick="showComparison('${r.ticker}')">
+                        <td><div class="ticker-name">${r.ticker}</div></td>
+                        <td style="font-weight: bold;">${(r.correlation * 100).toFixed(1)}%</td>
+                        <td style="color: ${devColor}; font-weight: bold;">${r.deviation > 0 ? '+' : ''}${r.deviation}%</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-family: monospace; font-size: 0.8rem;">Target: $${r.target_price} / Peer: $${r.current_price}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderDiscoveryResults(data) {
+            document.getElementById('colAsset').innerText = "Pair Symbols";
+            document.getElementById('analysisMeta').innerHTML = `
+                <div><b style="color:var(--text-muted)">SECTOR SCAN:</b> ${data.sector}</div>
+                <div><b style="color:var(--text-muted)">BEST PAIRS FOUND:</b> ${data.count}</div>
+                <div style="flex:1; text-align:right; font-size: 0.8rem; opacity: 0.6;">Pairs sorted by highest historical correlation</div>
+            `;
+
+            const tbody = document.getElementById('resultsTableBody');
+            tbody.innerHTML = data.results.map(r => {
+                let statusBadge = getStatusBadge(r);
+                const devColor = r.deviation < 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+                return `
+                    <tr onclick="showDiscoveryComparison('${r.ticker1}', '${r.ticker2}')">
+                        <td><div class="ticker-name">${r.ticker1} + ${r.ticker2}</div></td>
+                        <td style="font-weight: bold;">${(r.correlation * 100).toFixed(1)}%</td>
+                        <td style="color: ${devColor}; font-weight: bold;">${r.deviation > 0 ? '+' : ''}${r.deviation}%</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-size: 0.8rem; color: var(--text-muted);">Click to visualize trend</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadge(r) {
+            if (r.correlation > 0.85) {
+                if (r.deviation < -2.0) return `<span class="status-badge badge-lagger">LAGGER (BUY)</span>`;
+                if (r.deviation > 2.0) return `<span class="status-badge badge-leader">LEADER (SELL)</span>`;
+            }
+            return `<span class="status-badge badge-neutral">NEUTRAL</span>`;
+        }
+
+        async function showDiscoveryComparison(t1, t2) {
+            const loader = document.getElementById('loader');
+            loader.style.display = 'flex';
+            try {
+                // Re-use analyze endpoint to get aligned series for just these two
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: t1, peers: [t2], ma_period: 20 })
+                });
+                const data = await res.json();
+                lastData = data;
+                showComparison(t2);
+            } catch (e) {
+                alert("Error loading chart: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        function showComparison(peerTicker) {
+            if (!lastData || !lastData.peer_series[peerTicker]) {
+                alert("Series data not available.");
+                return;
+            }
+
+            const targetSeries = lastData.target_series.values;
+            const peerSeries = lastData.peer_series[peerTicker];
+            const labels = lastData.target_series.labels;
+
+            // Normalization: Scale both to 100 at the start of the visible period
+            // Since yf returns slightly misaligned data sometimes, we use the first valid overlaps
+            const startIdx = Math.max(0, targetSeries.length - 250); // Show last ~250 trading days (~1 year)
+
+            const tBase = targetSeries[startIdx];
+            const pBase = peerSeries[startIdx];
+
+            const normTarget = targetSeries.slice(startIdx).map(v => (v / tBase) * 100);
+            const normPeer = peerSeries.slice(startIdx).map(v => (v / pBase) * 100);
+            const visibleLabels = labels.slice(startIdx);
+
+            document.getElementById('modalTitle').innerText = `${lastData.target} vs ${peerTicker} Comparison`;
+            document.getElementById('chartModal').style.display = 'flex';
+
+            if (comparisonChart) comparisonChart.destroy();
+
+            const ctx = document.getElementById('compChart').getContext('2d');
+            comparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: visibleLabels,
+                    datasets: [
+                        {
+                            label: lastData.target + ' (Target)',
+                            data: normTarget,
+                            borderColor: '#6366f1',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            tension: 0.3
+                        },
+                        {
+                            label: peerTicker + ' (Peer)',
+                            data: normPeer,
+                            borderColor: '#00f2fe',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: 'white', font: { family: 'Outfit', size: 14 } } },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleColor: '#6366f1',
+                            bodyColor: 'white',
+                            padding: 12,
+                            borderRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('chartModal').style.display = 'none';
+        }
+
+        window.onload = loadTickers;
+    </script>
+
+</body>
+
+</html>
