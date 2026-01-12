@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Config
-METADATA_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'master_metadata.json'))
-SYMBOL_CACHE_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'symbol_cache.json'))
+# Config - Use local files for standalone deployment
+METADATA_FILE = os.path.join(os.path.dirname(__file__), 'master_metadata.json')
+SYMBOL_CACHE_FILE = os.path.join(os.path.dirname(__file__), 'symbol_cache.json')
 
 def load_json(path):
     if os.path.exists(path):
@@ -262,4 +262,6 @@ def best_pairs():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Railway provides the PORT environment variable
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host='0.0.0.0', port=port)
